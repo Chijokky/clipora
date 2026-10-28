@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Control room</title>
+<style>body{font:16px system-ui;background:#0b0d10;color:#e8ecf1;margin:0;display:grid;place-items:center;min-height:100vh}
+.box{background:#14181d;border:1px solid #232a32;border-radius:14px;padding:28px;width:min(92vw,520px)}
+input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #2b333c;background:#0b0d10;color:inherit;font:inherit;box-sizing:border-box}
+button{background:#b6ff3b;color:#111;font-weight:700;border:0;cursor:pointer}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{padding:8px;border-bottom:1px solid #232a32;text-align:left}
+.muted{color:#8b96a3;font-size:14px}</style></head><body><div class="box">
+<h2 style="margin-top:0">Control room</h2>
+<form id="lf"><input id="u" placeholder="Username" autocomplete="username"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button>Sign in</button><p id="err" class="muted"></p></form>
+<div id="dash" hidden><p class="muted">Last 7 days</p><div id="out"></div><button id="lo" style="margin-top:16px">Sign out</button></div></div>
+<script>
+const $=s=>document.querySelector(s);
+async function load(){
+  const r=await fetch('/api/stats');
+  if(r.status!==200){$('#lf').hidden=false;$('#dash').hidden=true;return}
+  const j=await r.json();$('#lf').hidden=true;$('#dash').hidden=false;
+  $('#out').innerHTML=j.db?'<table><tr><th>Date</th><th>Visits</th><th>Mines</th><th>Exports</th></tr>'+j.days.map(d=>`<tr><td>${d.d}</td><td>${d.visit||0}</td><td>${d.mine||0}</td><td>${d.export||0}</td></tr>`).join('')+'</table>':'<p>Signed in. Connect a free Upstash Redis database (see README) to see usage stats.</p>';
+}
+$('#lf').onsubmit=async e=>{e.preventDefault();const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u:$('#u').value,p:$('#p').value})});
+  if(r.ok)load();else $('#err').textContent='Wrong username or password'};
+$('#lo').onclick=()=>{document.cookie='s=; Max-Age=0; Path=/';location.reload()};
+load();
+</script></body></html>

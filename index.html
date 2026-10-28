@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clipora — turn long videos into short clips</title>
+<meta name="description" content="Find the best moments in a long video and export vertical clips, free, right in your browser.">
+<style>
+:root{--bg:#0b0d10;--card:#14181d;--line:#232a32;--tx:#e8ecf1;--mu:#8b96a3;--ac:#b6ff3b}
+*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+a{color:inherit}.w{max-width:1040px;margin:auto;padding:0 20px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0}.logo{font-weight:800;font-size:20px}.logo b{color:var(--ac)}
+.hero{text-align:center;padding:56px 0 32px}h1{font-size:clamp(32px,6vw,58px);line-height:1.08;margin:0 0 14px}.hero p{color:var(--mu);max-width:560px;margin:0 auto 24px}
+.btn{background:var(--ac);color:#111;font-weight:700;border:0;border-radius:10px;padding:13px 22px;font-size:16px;cursor:pointer;display:inline-block;text-decoration:none}.btn:disabled{opacity:.5}
+.stats{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin:28px 0;color:var(--mu)}.stats b{display:block;color:var(--tx);font-size:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.grid .card{margin:0}.grid h3{margin:0 0 6px}.grid p{margin:0;color:var(--mu);font-size:15px}
+video{width:100%;max-height:420px;border-radius:12px;background:#000}select,input[type=file]{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.clip{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:12px 0}
+.clip button{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}.clip .btn{padding:8px 14px}
+.mu{color:var(--mu);font-size:14px}footer{padding:40px 0;color:var(--mu);text-align:center;font-size:14px}
+</style></head><body><div class="w">
+<nav><div class="logo">Clip<b>ora</b></div><a class="btn" href="#tool">Start free</a></nav>
+<section class="hero"><h1>Scan a 3-hour video.<br>Keep the best 60 seconds.</h1>
+<p>Clipora listens to your video, finds the high-energy moments, and exports vertical clips ready for TikTok, Reels and Shorts. It all runs in your browser, so your video never gets uploaded.</p>
+<a class="btn" href="#tool">Try it free</a>
+<div class="stats"><div><b>100%</b>Free</div><div><b>Local</b>Zero uploads</div><div><b>9:16</b>Auto reframing</div></div></section>
+
+<section id="tool" class="card"><h2 style="margin-top:0">Mine your video</h2>
+<div class="row"><input type="file" id="f" accept="video/*"></div>
+<div id="tl" hidden><video id="v" controls playsinline></video>
+<div class="row"><label>Clip length <select id="len"><option>15</option><option selected>30</option><option>45</option><option>60</option></select> sec</label>
+<label>Clips <select id="n"><option>3</option><option selected>5</option><option>8</option><option>10</option></select></label>
+<button class="btn" id="mine">Find clips</button></div>
+<p class="mu">Best on Chrome or Edge. Files under about 1 hour work best.</p><div id="list"></div></div></section>
+
+<section class="grid">
+<div class="card"><h3>Offline processing</h3><p>Your video is analysed on your own device. Nothing is sent to a server.</p></div>
+<div class="card"><h3>Preview and pick</h3><p>Jump to every suggested moment and keep only the clips you like.</p></div>
+<div class="card"><h3>Vertical reframing</h3><p>Convert 16:9 to 9:16 and slide the focus so your subject stays in frame.</p></div>
+<div class="card"><h3>Unlimited re-mines</h3><p>Missed a moment? Change length or count and mine again at no cost.</p></div>
+</section>
+<footer>© 2026 Clipora</footer></div>
+<script>
+const $=s=>document.querySelector(s),v=$('#v');let F,clips=[];
+const track=e=>fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({e})}).catch(()=>{});
+track('visit');
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+$('#f').onchange=e=>{F=e.target.files[0];if(!F)return;v.src=URL.createObjectURL(F);$('#tl').hidden=false;$('#list').innerHTML=''};
+$('#mine').onclick=async()=>{
+  const b=$('#mine');b.disabled=true;b.textContent='Mining…';
+  try{
+    const L=+$('#len').value,N=+$('#n').value;
+    const buf=await new AudioContext().decodeAudioData(await F.arrayBuffer());
+    const d=buf.getChannelData(0),sr=buf.sampleRate,sec=Math.floor(d.length/sr),en=[];
+    for(let i=0;i<sec;i++){let s=0;for(let j=i*sr;j<(i+1)*sr;j+=16)s+=d[j]*d[j];en.push(s)}
+    const w=[];let run=0;
+    for(let i=0;i<sec;i++){run+=en[i];if(i>=L)run-=en[i-L];if(i>=L-1)w.push([i-L+1,run])}
+    w.sort((a,b)=>b[1]-a[1]);clips=[];
+    for(const [s] of w){if(clips.length>=N)break;if(clips.every(c=>Math.abs(c.s-s)>=L))clips.push({s,e:s+L,x:.5})}
+    clips.sort((a,b)=>a.s-b.s);render();track('mine');
+  }catch(e){alert('Could not read this video\'s audio. Try a shorter file or Chrome.')}
+  b.disabled=false;b.textContent='Find clips'};
+function render(){
+  const L=$('#list');L.innerHTML='';
+  clips.forEach((c,i)=>{
+    const r=document.createElement('div');r.className='clip';
+    r.innerHTML=`<div><b>Clip ${i+1}</b> <span class="mu">${fmt(c.s)} – ${fmt(c.e)}</span></div>
+    <label class="mu">Focus <input type="range" min="0" max="1" step=".05" value=".5"></label>
+    <div><button>Preview</button> <button class="btn">Export 9:16</button></div>`;
+    const [bp,be]=r.querySelectorAll('button');
+    r.querySelector('input').oninput=e=>c.x=+e.target.value;
+    bp.onclick=()=>{v.currentTime=c.s;v.play();v.scrollIntoView({behavior:'smooth',block:'center'})};
+    be.onclick=()=>exp(c,be);L.appendChild(r)})}
+async function exp(c,btn){
+  btn.disabled=true;btn.textContent='Exporting…';
+  const cv=document.createElement('canvas');cv.width=540;cv.height=960;const x=cv.getContext('2d');
+  v.pause();v.currentTime=c.s;await new Promise(r=>v.onseeked=r);
+  const out=new MediaStream([...cv.captureStream(30).getVideoTracks(),...v.captureStream().getAudioTracks()]);
+  const rec=new MediaRecorder(out,{mimeType:'video/webm'}),ch=[];
+  rec.ondataavailable=e=>ch.push(e.data);
+  const done=new Promise(r=>rec.onstop=r);rec.start();v.play();
+  const draw=()=>{
+    const cw=Math.min(v.videoWidth,v.videoHeight*9/16);
+    x.fillStyle='#000';x.fillRect(0,0,540,960);
+    x.drawImage(v,c.x*(v.videoWidth-cw),0,cw,v.videoHeight,0,0,540,960);
+    if(v.currentTime>=c.e||v.ended){v.pause();rec.stop()}else requestAnimationFrame(draw)};
+  draw();await done;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(ch,{type:'video/webm'}));a.download=`clipora-${c.s}s.webm`;a.click();
+  btn.disabled=false;btn.textContent='Export 9:16';track('export')}
+</script></body></html>
