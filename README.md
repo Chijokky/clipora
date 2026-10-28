@@ -8,3 +8,6 @@ Vercel > Settings > Environment Variables:
 
 Admin panel: https://YOUR-SITE.vercel.app/control-room-x7k2
 To change the secret path, rename control-room-x7k2.html and update vercel.json and robots.txt.
+
+AI post writer (free): create a free key at Google AI Studio and add GEMINI_API_KEY in Vercel.
+Optional GEMINI_MODEL (default gemini-2.5-flash): set it to whichever free Gemini model is current.

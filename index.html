@@ -1,12 +1,12 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clipora — turn long videos into short clips</title>
 <meta name="description" content="Find the best moments in a long video and export vertical clips, free, right in your browser.">
 <style>
-:root{--bg:#0b0d10;--card:#14181d;--line:#232a32;--tx:#e8ecf1;--mu:#8b96a3;--ac:#b6ff3b}
+:root{--bg:#0b0d10;--card:#14181d;--line:#232a32;--tx:#e8ecf1;--mu:#8b96a3;--ac:#38bdf8}
 *{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
 a{color:inherit}.w{max-width:1040px;margin:auto;padding:0 20px}
 nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0}.logo{font-weight:800;font-size:20px}.logo b{color:var(--ac)}
 .hero{text-align:center;padding:56px 0 32px}h1{font-size:clamp(32px,6vw,58px);line-height:1.08;margin:0 0 14px}.hero p{color:var(--mu);max-width:560px;margin:0 auto 24px}
-.btn{background:var(--ac);color:#111;font-weight:700;border:0;border-radius:10px;padding:13px 22px;font-size:16px;cursor:pointer;display:inline-block;text-decoration:none}.btn:disabled{opacity:.5}
+.btn{background:linear-gradient(90deg,#1d4ed8,#38bdf8);color:#fff;font-weight:700;border:0;border-radius:10px;padding:13px 22px;font-size:16px;cursor:pointer;display:inline-block;text-decoration:none}.btn:disabled{opacity:.5}
 .stats{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin:28px 0;color:var(--mu)}.stats b{display:block;color:var(--tx);font-size:22px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin:18px 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.grid .card{margin:0}.grid h3{margin:0 0 6px}.grid p{margin:0;color:var(--mu);font-size:15px}
@@ -16,6 +16,7 @@ video{width:100%;max-height:420px;border-radius:12px;background:#000}select,inpu
 .clip button{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}.clip .btn{padding:8px 14px}
 .mu{color:var(--mu);font-size:14px}footer{padding:40px 0;color:var(--mu);text-align:center;font-size:14px}
 input[type=text]{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;flex:1;min-width:150px;font:inherit}
+textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;margin:8px 0}
 </style></head><body><div class="w">
 <nav><div class="logo">Clip<b>ora</b></div><a class="btn" href="#tool">Start free</a></nav>
 <section class="hero"><h1>Scan a 3-hour video.<br>Keep the best 60 seconds.</h1>
@@ -32,12 +33,13 @@ input[type=text]{background:var(--bg);color:var(--tx);border:1px solid var(--lin
 <div class="card" style="margin:14px 0"><h3 style="margin:0 0 8px">Export &amp; branding</h3>
 <div class="row"><label class="mu">Format <select id="fmt"><option value="tt">TikTok / Reels / Shorts 9:16</option><option value="yt">YouTube 16:9</option><option value="sq">Square 1:1</option></select></label>
 <label class="mu">Quality <select id="q"><option value="1080" selected>Full HD 1080p</option><option value="720">HD 720p</option></select></label></div>
-<div class="row"><input type="text" id="wm" placeholder="Watermark name"><input type="text" id="ttl" placeholder="Title on video"><input type="text" id="hd" placeholder="@username"></div>
+<div class="row"><input type="text" id="wm" placeholder="Watermark name (if no logo)"><input type="text" id="ttl" placeholder="Title on video"><input type="text" id="hd" placeholder="@username"></div>
+<div class="row"><label class="mu">Brand logo (PNG, auto-resized) <input type="file" id="lg" accept="image/png"></label><button type="button" id="lgx" class="mu" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--mu);cursor:pointer">Remove logo</button></div>
 <label class="mu"><input type="checkbox" id="stk" checked> Show &ldquo;Follow @username&rdquo; sticker</label></div>
-<p class="mu">Best on Chrome or Edge. Files under about 1 hour work best.</p><div id="list"></div></div></section>
+<p class="mu">Best on Chrome or Edge. Files under about 1 hour work best.</p><div id="list"></div><div id="ai"></div></div></section>
 
 <section class="grid">
-<div class="card"><h3>Offline processing</h3><p>Your video is analysed on your own device. Nothing is sent to a server.</p></div>
+<div class="card"><h3>Offline processing</h3><p>Your video is analysed on your own device and never uploaded. Only the spoken text is sent if you use the AI post writer.</p></div>
 <div class="card"><h3>Preview and pick</h3><p>Jump to every suggested moment and keep only the clips you like.</p></div>
 <div class="card"><h3>Vertical reframing</h3><p>Convert 16:9 to 9:16 and slide the focus so your subject stays in frame.</p></div>
 <div class="card"><h3>Unlimited re-mines</h3><p>Missed a moment? Change length or count and mine again at no cost.</p></div>
@@ -53,8 +55,8 @@ $('#mine').onclick=async()=>{
   const b=$('#mine');b.disabled=true;b.textContent='Mining…';
   try{
     const L=+$('#len').value,N=+$('#n').value;
-    const buf=await new AudioContext().decodeAudioData(await F.arrayBuffer());
-    const d=buf.getChannelData(0),sr=buf.sampleRate,sec=Math.floor(d.length/sr),en=[];
+    const buf=await new AudioContext({sampleRate:16000}).decodeAudioData(await F.arrayBuffer());
+    const d=A=buf.getChannelData(0),sr=buf.sampleRate,sec=Math.floor(d.length/sr),en=[];
     for(let i=0;i<sec;i++){let s=0;for(let j=i*sr;j<(i+1)*sr;j+=16)s+=d[j]*d[j];en.push(s)}
     const w=[];let run=0;
     for(let i=0;i<sec;i++){run+=en[i];if(i>=L)run-=en[i-L];if(i>=L-1)w.push([i-L+1,run])}
@@ -69,11 +71,11 @@ function render(){
     const r=document.createElement('div');r.className='clip';
     r.innerHTML=`<div><b>Clip ${i+1}</b> <span class="mu">${fmt(c.s)} – ${fmt(c.e)}</span></div>
     <label class="mu">Focus <input type="range" min="0" max="1" step=".05" value=".5"></label>
-    <div><button>Preview</button> <button class="btn">Export</button></div>`;
-    const [bp,be]=r.querySelectorAll('button');
+    <div><button>Preview</button> <button class="btn">Export</button> <button>AI post</button></div>`;
+    const [bp,be,ba]=r.querySelectorAll('button');
     r.querySelector('input').oninput=e=>c.x=+e.target.value;
     bp.onclick=()=>{v.currentTime=c.s;v.play();v.scrollIntoView({behavior:'smooth',block:'center'})};
-    be.onclick=()=>exp(c,be);L.appendChild(r)})}
+    be.onclick=()=>exp(c,be);ba.onclick=()=>ai(c,ba);L.appendChild(r)})}
 const O=()=>{const h=$('#hd').value.trim().replace(/^@+/,'');return{fmt:$('#fmt').value,q:+$('#q').value,wm:$('#wm').value.trim(),title:$('#ttl').value.trim(),h:h?'@'+h:'',stk:$('#stk').checked}};
 ['wm','ttl','hd'].forEach(i=>{try{$('#'+i).value=localStorage.getItem('c_'+i)||''}catch(e){}$('#'+i).oninput=e=>{try{localStorage.setItem('c_'+i,e.target.value)}catch(_){}}});
 const ev=n=>Math.round(n/2)*2;
@@ -90,7 +92,7 @@ function overlay(x,W,H,o,t){
     x.fillStyle='rgba(0,0,0,.62)';rr(x,(W-bw)/2,top,bw,bh,u*2.5);
     x.fillStyle='#fff';x.textAlign='center';ls.forEach((s,i)=>x.fillText(s,W/2,top+u*2+lh*(i+.5)));
   }
-  if(o.wm){
+  if(LOGO){const k=Math.min(W*.26/LOGO.width,H*(port?.07:.12)/LOGO.height),lw=LOGO.width*k,lh=LOGO.height*k;x.globalAlpha=.92;x.drawImage(LOGO,W-u*4-lw,(port?H*.85:H*.93)-lh/2,lw,lh);x.globalAlpha=1}else if(o.wm){
     x.font=`700 ${u*3.4}px system-ui,sans-serif`;x.textAlign='right';x.fillStyle='rgba(255,255,255,.6)';
     x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=u;x.fillText(o.wm,W-u*4,port?H*.85:H*.93);x.shadowBlur=0;
   }
@@ -98,10 +100,10 @@ function overlay(x,W,H,o,t){
     const txt='Follow '+o.h;x.font=`800 ${u*4.2}px system-ui,sans-serif`;
     const bw=x.measureText(txt).width+u*13,bh=u*9,s=1+.04*Math.sin(t*5);
     x.save();x.translate(W/2,port?H*.76:H*.86);x.scale(s,s);
-    x.fillStyle='#b6ff3b';rr(x,-bw/2,-bh/2,bw,bh,bh/2);
-    x.fillStyle='#111';x.beginPath();x.arc(-bw/2+u*5,0,u*2.6,0,7);x.fill();
-    x.fillStyle='#b6ff3b';x.textAlign='center';x.font=`900 ${u*4}px system-ui,sans-serif`;x.fillText('+',-bw/2+u*5,u*.2);
-    x.fillStyle='#111';x.textAlign='left';x.font=`800 ${u*4.2}px system-ui,sans-serif`;x.fillText(txt,-bw/2+u*9.5,u*.2);
+    const g=x.createLinearGradient(-bw/2,0,bw/2,0);g.addColorStop(0,'#1d4ed8');g.addColorStop(1,'#38bdf8');x.fillStyle=g;rr(x,-bw/2,-bh/2,bw,bh,bh/2);
+    x.fillStyle='#fff';x.beginPath();x.arc(-bw/2+u*5,0,u*2.6,0,7);x.fill();
+    x.fillStyle='#1d4ed8';x.textAlign='center';x.font=`900 ${u*4}px system-ui,sans-serif`;x.fillText('+',-bw/2+u*5,u*.2);
+    x.fillStyle='#fff';x.textAlign='left';x.font=`800 ${u*4.2}px system-ui,sans-serif`;x.fillText(txt,-bw/2+u*9.5,u*.2);
     x.restore();
   }
 }
@@ -126,5 +128,29 @@ async function exp(c,btn){
   a.download=`clipora-${c.s}s-${o.fmt}.${ext}`;a.click();
   btn.disabled=false;btn.textContent='Export';track('export');
   if(ext==='webm')alert('Your browser can only save WebM. Update Chrome or Edge to export MP4.');
+}
+
+let A=null,LOGO=null,asr=null;
+const esc=t=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const setLogo=u=>{const i=new Image();i.onload=()=>LOGO=i;i.src=u};
+try{const u=localStorage.getItem('c_logo');if(u)setLogo(u)}catch(e){}
+$('#lg').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{setLogo(r.result);try{localStorage.setItem('c_logo',r.result)}catch(_){}};r.readAsDataURL(f)};
+$('#lgx').onclick=()=>{LOGO=null;$('#lg').value='';try{localStorage.removeItem('c_logo')}catch(e){}};
+async function ai(c,btn){
+  const box=$('#ai');btn.disabled=true;box.scrollIntoView({behavior:'smooth'});
+  try{
+    box.innerHTML='<p class="mu">Loading speech AI (the first time downloads about 40 MB)…</p>';
+    if(!asr){const {pipeline}=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2/+esm');asr=await pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en')}
+    box.innerHTML='<p class="mu">Listening to the clip…</p>';
+    const t=((await asr(A.slice(c.s*16000,c.e*16000),{chunk_length_s:30,stride_length_s:5})).text||'').trim();
+    box.innerHTML='<p class="mu">Writing your posts…</p>';
+    const o=O(),r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:t.slice(0,4000),b:o.wm,h:o.h})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error||'Something went wrong');
+    const K=[['youtube','YouTube'],['tiktok','TikTok'],['instagram','Instagram'],['x','X / Facebook']];
+    box.innerHTML='<h3>Ready to post</h3><details><summary class="mu">What the AI heard</summary><p class="mu">'+esc(t)+'</p></details>'+K.map(([k,n])=>`<div class="card"><b>${n}</b><textarea id="t_${k}" rows="6"></textarea><button class="btn" data-k="${k}">Copy</button></div>`).join('');
+    K.forEach(([k])=>{const v=j[k];$('#t_'+k).value=typeof v==='string'?v:JSON.stringify(v,null,1)});
+    box.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{navigator.clipboard.writeText($('#t_'+b.dataset.k).value);b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)});
+  }catch(e){box.innerHTML='<p class="mu">'+esc(e.message||'Failed')+'</p>'}
+  btn.disabled=false;
 }
 </script></body></html>
