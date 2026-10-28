@@ -15,6 +15,7 @@ video{width:100%;max-height:420px;border-radius:12px;background:#000}select,inpu
 .clip{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:12px 0}
 .clip button{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}.clip .btn{padding:8px 14px}
 .mu{color:var(--mu);font-size:14px}footer{padding:40px 0;color:var(--mu);text-align:center;font-size:14px}
+input[type=text]{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;flex:1;min-width:150px;font:inherit}
 </style></head><body><div class="w">
 <nav><div class="logo">Clip<b>ora</b></div><a class="btn" href="#tool">Start free</a></nav>
 <section class="hero"><h1>Scan a 3-hour video.<br>Keep the best 60 seconds.</h1>
@@ -28,6 +29,11 @@ video{width:100%;max-height:420px;border-radius:12px;background:#000}select,inpu
 <div class="row"><label>Clip length <select id="len"><option>15</option><option selected>30</option><option>45</option><option>60</option></select> sec</label>
 <label>Clips <select id="n"><option>3</option><option selected>5</option><option>8</option><option>10</option></select></label>
 <button class="btn" id="mine">Find clips</button></div>
+<div class="card" style="margin:14px 0"><h3 style="margin:0 0 8px">Export &amp; branding</h3>
+<div class="row"><label class="mu">Format <select id="fmt"><option value="tt">TikTok / Reels / Shorts 9:16</option><option value="yt">YouTube 16:9</option><option value="sq">Square 1:1</option></select></label>
+<label class="mu">Quality <select id="q"><option value="1080" selected>Full HD 1080p</option><option value="720">HD 720p</option></select></label></div>
+<div class="row"><input type="text" id="wm" placeholder="Watermark name"><input type="text" id="ttl" placeholder="Title on video"><input type="text" id="hd" placeholder="@username"></div>
+<label class="mu"><input type="checkbox" id="stk" checked> Show &ldquo;Follow @username&rdquo; sticker</label></div>
 <p class="mu">Best on Chrome or Edge. Files under about 1 hour work best.</p><div id="list"></div></div></section>
 
 <section class="grid">
@@ -63,25 +69,62 @@ function render(){
     const r=document.createElement('div');r.className='clip';
     r.innerHTML=`<div><b>Clip ${i+1}</b> <span class="mu">${fmt(c.s)} – ${fmt(c.e)}</span></div>
     <label class="mu">Focus <input type="range" min="0" max="1" step=".05" value=".5"></label>
-    <div><button>Preview</button> <button class="btn">Export 9:16</button></div>`;
+    <div><button>Preview</button> <button class="btn">Export</button></div>`;
     const [bp,be]=r.querySelectorAll('button');
     r.querySelector('input').oninput=e=>c.x=+e.target.value;
     bp.onclick=()=>{v.currentTime=c.s;v.play();v.scrollIntoView({behavior:'smooth',block:'center'})};
     be.onclick=()=>exp(c,be);L.appendChild(r)})}
+const O=()=>{const h=$('#hd').value.trim().replace(/^@+/,'');return{fmt:$('#fmt').value,q:+$('#q').value,wm:$('#wm').value.trim(),title:$('#ttl').value.trim(),h:h?'@'+h:'',stk:$('#stk').checked}};
+['wm','ttl','hd'].forEach(i=>{try{$('#'+i).value=localStorage.getItem('c_'+i)||''}catch(e){}$('#'+i).oninput=e=>{try{localStorage.setItem('c_'+i,e.target.value)}catch(_){}}});
+const ev=n=>Math.round(n/2)*2;
+function size(f,q){if(f==='sq')return[ev(q),ev(q)];const L=ev(q*16/9);return f==='tt'?[ev(q),L]:[L,ev(q)]}
+function mime(){for(const m of['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'])if(MediaRecorder.isTypeSupported(m))return m;return''}
+function rr(x,a,b,w,h,r){x.beginPath();x.roundRect(a,b,w,h,r);x.fill()}
+function overlay(x,W,H,o,t){
+  const u=Math.min(W,H)/100,port=H>W;x.textBaseline='middle';
+  if(o.title){
+    x.font=`800 ${u*5.2}px system-ui,sans-serif`;
+    const lines=[];let l='';
+    for(const w of o.title.split(' ')){const n=l?l+' '+w:w;if(x.measureText(n).width>W*.84&&l){lines.push(l);l=w}else l=n}
+    lines.push(l);const ls=lines.slice(0,3),lh=u*6.6,bh=ls.length*lh+u*4,bw=Math.min(W*.92,Math.max(...ls.map(s=>x.measureText(s).width))+u*7),top=port?H*.1:H*.06;
+    x.fillStyle='rgba(0,0,0,.62)';rr(x,(W-bw)/2,top,bw,bh,u*2.5);
+    x.fillStyle='#fff';x.textAlign='center';ls.forEach((s,i)=>x.fillText(s,W/2,top+u*2+lh*(i+.5)));
+  }
+  if(o.wm){
+    x.font=`700 ${u*3.4}px system-ui,sans-serif`;x.textAlign='right';x.fillStyle='rgba(255,255,255,.6)';
+    x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=u;x.fillText(o.wm,W-u*4,port?H*.85:H*.93);x.shadowBlur=0;
+  }
+  if(o.h&&o.stk){
+    const txt='Follow '+o.h;x.font=`800 ${u*4.2}px system-ui,sans-serif`;
+    const bw=x.measureText(txt).width+u*13,bh=u*9,s=1+.04*Math.sin(t*5);
+    x.save();x.translate(W/2,port?H*.76:H*.86);x.scale(s,s);
+    x.fillStyle='#b6ff3b';rr(x,-bw/2,-bh/2,bw,bh,bh/2);
+    x.fillStyle='#111';x.beginPath();x.arc(-bw/2+u*5,0,u*2.6,0,7);x.fill();
+    x.fillStyle='#b6ff3b';x.textAlign='center';x.font=`900 ${u*4}px system-ui,sans-serif`;x.fillText('+',-bw/2+u*5,u*.2);
+    x.fillStyle='#111';x.textAlign='left';x.font=`800 ${u*4.2}px system-ui,sans-serif`;x.fillText(txt,-bw/2+u*9.5,u*.2);
+    x.restore();
+  }
+}
 async function exp(c,btn){
+  if(!window.MediaRecorder){alert('Please use a recent Chrome, Edge or Safari.');return}
+  const o=O(),[W,H]=size(o.fmt,o.q),M=mime(),ext=M.includes('mp4')?'mp4':'webm';
   btn.disabled=true;btn.textContent='Exporting…';
-  const cv=document.createElement('canvas');cv.width=540;cv.height=960;const x=cv.getContext('2d');
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
   v.pause();v.currentTime=c.s;await new Promise(r=>v.onseeked=r);
   const out=new MediaStream([...cv.captureStream(30).getVideoTracks(),...v.captureStream().getAudioTracks()]);
-  const rec=new MediaRecorder(out,{mimeType:'video/webm'}),ch=[];
+  const rec=new MediaRecorder(out,{mimeType:M,videoBitsPerSecond:o.q>=1080?10e6:6e6,audioBitsPerSecond:192e3}),ch=[];
   rec.ondataavailable=e=>ch.push(e.data);
   const done=new Promise(r=>rec.onstop=r);rec.start();v.play();
+  const ar=W/H;
   const draw=()=>{
-    const cw=Math.min(v.videoWidth,v.videoHeight*9/16);
-    x.fillStyle='#000';x.fillRect(0,0,540,960);
-    x.drawImage(v,c.x*(v.videoWidth-cw),0,cw,v.videoHeight,0,0,540,960);
+    const vw=v.videoWidth,vh=v.videoHeight;let sw,sh,sx,sy;
+    if(vw/vh>ar){sh=vh;sw=sh*ar;sx=c.x*(vw-sw);sy=0}else{sw=vw;sh=sw/ar;sx=0;sy=c.x*(vh-sh)}
+    x.fillStyle='#000';x.fillRect(0,0,W,H);x.drawImage(v,sx,sy,sw,sh,0,0,W,H);overlay(x,W,H,o,v.currentTime);
     if(v.currentTime>=c.e||v.ended){v.pause();rec.stop()}else requestAnimationFrame(draw)};
   draw();await done;
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(ch,{type:'video/webm'}));a.download=`clipora-${c.s}s.webm`;a.click();
-  btn.disabled=false;btn.textContent='Export 9:16';track('export')}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(ch,{type:M||'video/webm'}));
+  a.download=`clipora-${c.s}s-${o.fmt}.${ext}`;a.click();
+  btn.disabled=false;btn.textContent='Export';track('export');
+  if(ext==='webm')alert('Your browser can only save WebM. Update Chrome or Edge to export MP4.');
+}
 </script></body></html>
